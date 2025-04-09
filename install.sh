@@ -25,15 +25,42 @@ wget --no-check-certificate -P /tmp http://chumo.site/zyysk5/gost.tar.gz
 tar -zmxf /tmp/gost.tar.gz -C /usr/local/gost/
 chmod +x /usr/local/gost/gost
 
+# 创建用户及指定 UID
+useradd -u 1001 aa1111
+useradd -u 1002 aa1112
+useradd -u 1003 aa1113
+
+# 可选：为每个用户设置初始密码
+echo "123456" | passwd --stdin aa1111
+echo "123456" | passwd --stdin aa1112
+echo "123456" | passwd --stdin aa1113
+
+echo "用户创建完成：aa1111 (1001), aa1112 (1002), aa1113 (1003)"
+
 # 定义三个内网IP（请根据实际情况修改）
 ips=( $(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:") )
 
 # 创建启动脚本
+# 定义用户数组
+users=(aa1111 aa1112 aa1113)
+
+# 创建启动脚本文件
 echo '#!/bin/bash' > /etc/rc.d/init.d/ci_gost
+
+# 初始化索引
+index=0
+
+# 循环 IP 地址（假设你已经定义好了 ips 数组）
 for ip in "${ips[@]}"; do
-    echo "nohup /usr/local/gost/gost -D -L=aa1111:aa1111@${ip}:2016?timeout=30 >/var/log/gost_${ip}.log 2>&1 &" >> /etc/rc.d/init.d/ci_gost
-    echo "<${ip}:2016:aa1111:aa1111>" >> /tmp/s5
+    user=${users[$index]}
+    echo "/usr/local/gost/gost -D -L=${user}:${user}@${ip}:2016?timeout=30 &" >> /etc/rc.d/init.d/ci_gost
+    echo "<${ip}:2016:${user}:${user}>" >> /tmp/s5
+
+    # 用户轮换
+    index=$(( (index + 1) % ${#users[@]} ))
 done
+
+# 设置脚本执行权限
 chmod +x /etc/rc.d/init.d/ci_gost
 
 # 配置防火墙
@@ -50,10 +77,24 @@ iptables -X
 iptables -t nat -X
 
 # 设置新规则
-for ip in "${ips[@]}"; do
-    iptables -A INPUT -p tcp --dport 2016 -j ACCEPT
-    iptables -A INPUT -p udp --dport 2016 -j ACCEPT
-done
+# user1 对应 172.19.38.111
+iptables -t mangle -A OUTPUT -m owner --uid-owner 1001 -j MARK --set-mark 1001
+iptables -t nat -A POSTROUTING -m mark --mark 1001 -j SNAT --to-source 172.19.38.111
+iptables -t nat -A PREROUTING -d 172.19.38.111 -p tcp --dport 30010 -j DNAT --to-destination 172.19.38.111:2016
+iptables -t nat -A PREROUTING -d 172.19.38.111 -p udp --dport 30010 -j DNAT --to-destination 172.19.38.111:2016
+
+# user2 对应 172.19.38.112
+iptables -t mangle -A OUTPUT -m owner --uid-owner 1002 -j MARK --set-mark 1002
+iptables -t nat -A POSTROUTING -m mark --mark 1002 -j SNAT --to-source 172.19.38.112
+iptables -t nat -A PREROUTING -d 172.19.38.112 -p tcp --dport 30011 -j DNAT --to-destination 172.19.38.112:2016
+iptables -t nat -A PREROUTING -d 172.19.38.112 -p udp --dport 30011 -j DNAT --to-destination 172.19.38.112:2016
+
+# user3 对应 172.19.38.113
+iptables -t mangle -A OUTPUT -m owner --uid-owner 1003 -j MARK --set-mark 1003
+iptables -t nat -A POSTROUTING -m mark --mark 1003 -j SNAT --to-source 172.19.38.113
+iptables -t nat -A PREROUTING -d 172.19.38.113 -p tcp --dport 30012 -j DNAT --to-destination 172.19.38.113:2016
+iptables -t nat -A PREROUTING -d 172.19.38.113 -p udp --dport 30012 -j DNAT --to-destination 172.19.38.113:2016
+
 
 iptables -L
 
