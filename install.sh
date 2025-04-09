@@ -55,6 +55,8 @@ for ip in "${ips[@]}"; do
     iptables -A INPUT -p udp --dport 2016 -j ACCEPT
 done
 
+iptables -L
+
 # 保存防火墙规则
 service iptables save
 echo 1 > /proc/sys/net/ipv4/ip_forward
