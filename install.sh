@@ -31,7 +31,7 @@ ips=( $(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{prin
 # 创建启动脚本
 echo '#!/bin/bash' > /etc/rc.d/init.d/ci_gost
 for ip in "${ips[@]}"; do
-    echo "/usr/local/gost/gost -D -L=aa1111:aa1111@${ip}:2016?timeout=30 &" >> /etc/rc.d/init.d/ci_gost
+    echo "nohup /usr/local/gost/gost -D -L=aa1111:aa1111@${ip}:2016?timeout=30 >/var/log/gost_${ip}.log 2>&1 &" >> /etc/rc.d/init.d/ci_gost
     echo "<${ip}:2016:aa1111:aa1111>" >> /tmp/s5
 done
 chmod +x /etc/rc.d/init.d/ci_gost
