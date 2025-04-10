@@ -60,13 +60,13 @@ sleep 1
 
 ip=`ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:"`
 jxip=$(echo $ip | sed 's/ /:/g')
-echo $jxip
+echo "$jxip"
 
 sleep 6
 
 bash install.sh --ip="$jxip" --port=$port --user=$name --passwd=$passwd
 
-echo -n Socks5代理已经安装完成，等待6秒设置策略路由
+echo -n "Socks5代理已经安装完成，等待6秒设置策略路由"
 sleep 6
 
 #SUBNET_GATEWAY=$(ip route show default | awk '/default/ {print $3; exit}')
@@ -75,23 +75,25 @@ SUBNET_GATEWAY="172.19.63.253"
 SUBNET_NETWORK="172.19.0.0/18"
 
 # Get the list of network interfaces
-NIC_LIST=($(ip link show | awk -F': ' '!/^[0-9]: lo/{print $2}'))
+NIC_LIST=(eth0 eth1)
 s=20
-# Loop through each network interface
-for net_name in "${NIC_LIST[@]}"; do
-    # Check if the network interface is an extension NIC
-    if [[ "$net_name" != *"lo"* ]]; then
-        # Get the IP address of the network interface
-        #ip_address=$(ip addr show "$net_name" | awk '/inet /{print $2}')
-        ip_address=$(ip addr show "$net_name" | awk '/inet / && !/127.0.0.1/{gsub(/\/.*/,"",$2); print $2}')
-        # Generate a unique route table number based on the network interface index
-        route_table=$(( ${#NIC_LIST[@]} - ${!net_name} + 10 ))
 
-        s=$((s+1))
-        ip route add default via 172.19.63.253 dev $net_name table $s
-        ip route add 172.19.0.0/18 dev $net_name table $s
-        ip rule add from $ip_address table $s
+for net_name in "${NIC_LIST[@]}"; do
+    if [[ "$net_name" != *"lo"* ]]; then
+        readarray -t ip_array < <(ip addr show "$net_name" | awk '/inet / && !/127.0.0.1/ {gsub(/\/.*/,"",$2); print $2}')
+        for ((i=0; i<${#ip_array[@]}; i++)); do
+
+            s=$((s+1))
+            
+            ip_list="${ip_array[$i]}"
+
+            ip route add default via 172.19.63.253 dev $net_name table $s
+            ip route add 172.19.0.0/18 dev $net_name table $s
+            ip rule add from $ip_list table $s
+
+            echo "$ip_list table $s"
+        done
     fi
 done
 
-echo -n 策略路由已经添加完成
+echo -n "策略路由已经添加完成"
