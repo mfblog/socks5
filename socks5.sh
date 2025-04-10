@@ -79,7 +79,10 @@ NIC_LIST=($(ip link show | awk -F': ' '!/^[0-9]: lo/{print $2}'))
 s=20
 # Loop through each network interface
 for net_name in "${NIC_LIST[@]}"; do
+    # Check if the network interface is an extension NIC
     if [[ "$net_name" != *"lo"* ]]; then
+        # Get the IP address of the network interface
+        #ip_address=$(ip addr show "$net_name" | awk '/inet /{print $2}')
         ip_address=$(ip addr show "$net_name" | awk '/inet / && !/127.0.0.1/{gsub(/\/.*/,"",$2); print $2}')
         # Generate a unique route table number based on the network interface index
         route_table=$(( ${#NIC_LIST[@]} - ${!net_name} + 10 ))
