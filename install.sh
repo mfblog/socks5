@@ -1,114 +1,382 @@
 #!/bin/bash
-echo "同步网络时间中…"
-yum install -y ntpdate
-ntpdate -u cn.pool.ntp.org
-hwclock -w
-mv /etc/localtime /etc/localtime.bak
-ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-date -R
+#
+# Provides:          sockd.info (Lozy)
+#
 
-# 清理现有gost进程
-if ps -ef|grep "gost"|egrep -v grep >/dev/null; then
-    ps -ef|grep gost|grep -v grep|awk '{print $2}'|xargs kill -9
-fi
+VERSION="1.3.2"
+INSTALL_FROM="compile"
+DEFAULT_PORT="2016"
+DEFAULT_USER=""
+DEFAULT_PAWD=""
+WHITE_LIST_NET=""
+WHITE_LIST=""
+SCRIPT_HOST="https://public.sockd.info"
+PACKAGE_NAME="dante_1.3.2-1_$(uname -m).deb"
+COLOR_PATH="/etc/default/color"
 
-# 清理旧配置文件
-[ -f "/etc/rc.d/init.d/ci_gost" ] && rm -f /etc/rc.d/init.d/ci_gost
-[ -f "/tmp/s5" ] && rm -f /tmp/s5
-[ -d "/usr/local/gost" ] && rm -rf /usr/local/gost && mkdir -p /usr/local/gost
+BIN_DIR="/etc/danted"
+BIN_PATH="/etc/danted/sbin/sockd"
+CONFIG_PATH="/etc/danted/sockd.conf"
+BIN_SCRIPT="/etc/init.d/sockd"
 
-# 安装依赖
-rpm -qa|grep "wget" &> /dev/null || yum -y install wget
+DEFAULT_IPADDR=$(ip addr | grep 'inet ' | grep -Ev 'inet 127|inet 192\.168' | \
+            sed "s/[[:space:]]*inet \([0-9.]*\)\/.*/\1/")
+RUN_PATH=$(cd `dirname $0`;pwd )
+RUN_OPTS=$*
 
-# 下载并安装gost
-wget --no-check-certificate -P /tmp http://chumo.site/zyysk5/gost.tar.gz
-tar -zmxf /tmp/gost.tar.gz -C /usr/local/gost/
-chmod +x /usr/local/gost/gost
+##################------------Func()---------#####################################
+remove_install(){
+    [ -s "${BIN_SCRIPT}" ] && ${BIN_SCRIPT} stop > /dev/null 2>&1
+    [ -f "${BIN_SCRIPT}" ] && rm "${BIN_SCRIPT}"
+    [ -n "$BIN_DIR" ] && rm -r "$BIN_DIR"
+}
 
-# 创建用户及指定 UID
-useradd -u 1001 aa1111
-useradd -u 1002 aa1112
-useradd -u 1003 aa1113
+detect_install(){
+    if [ -s "${BIN_PATH}" ];then
+        echo "dante socks5 already install"
+        ${BIN_PATH} -v
+    fi
+}
 
-# 可选：为每个用户设置初始密码
-echo "123456" | passwd --stdin aa1111
-echo "123456" | passwd --stdin aa1112
-echo "123456" | passwd --stdin aa1113
+generate_config_ip(){
+    local ipaddr="$1"
+    local port="$2"
 
-echo "用户创建完成：aa1111 (1001), aa1112 (1002), aa1113 (1003)"
+    cat <<EOF
+# Generate interface ${ipaddr}
+internal: ${ipaddr}  port = ${port}
+external: ${ipaddr}
 
-# 定义三个内网IP（请根据实际情况修改）
-ips=( $(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:") )
+EOF
+}
 
-# 创建启动脚本
-# 定义用户数组
-users=(aa1111 aa1112 aa1113)
+generate_config_iplist(){
+    local ipaddr_list="$1"
+    local port="$2"
 
-# 创建启动脚本文件
-echo '#!/bin/bash' > /etc/rc.d/init.d/ci_gost
+    [ -z "${ipaddr_list}" ] && return 1
+    [ -z "${port}" ] && return 2
 
-# 初始化索引
-index=0
+    for ipaddr in ${ipaddr_list};do
+        generate_config_ip ${ipaddr} ${port} >> ${CONFIG_PATH}
+    done
 
-# 循环 IP 地址（假设你已经定义好了 ips 数组）
-for ip in "${ips[@]}"; do
-    user=${users[$index]}
-    echo "/usr/local/gost/gost -D -L=${user}:${user}@${ip}:2016?timeout=30 &" >> /etc/rc.d/init.d/ci_gost
-    echo "<${ip}:2016:${user}:${user}>" >> /tmp/s5
+    ipaddr_array=($ipaddr_list)
 
-    # 用户轮换
-    index=$(( (index + 1) % ${#users[@]} ))
+    if [ ${#ipaddr_array[@]} -gt 1 ];then
+        echo "external.rotation: same-same" >> ${CONFIG_PATH}
+    fi
+}
+
+generate_config_static(){
+    if [ "$VERSION" == "1.3.2" ];then
+    cat <<EOF
+method: pam none
+clientmethod: none
+user.privileged: root
+user.notprivileged: sockd
+logoutput: /var/log/sockd.log
+
+client pass {
+        from: 0.0.0.0/0  to: 0.0.0.0/0
+}
+client block {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+}
+EOF
+    else
+    cat <<EOF
+clientmethod: none
+socksmethod: pam.username none
+
+user.privileged: root
+user.notprivileged: sockd
+
+logoutput: /var/log/sockd.log
+
+client pass {
+    from: 0/0  to: 0/0
+    log: connect disconnect
+}
+client block {
+    from: 0/0 to: 0/0
+    log: connect error
+}
+EOF
+    fi
+}
+generate_config_white(){
+    local white_ipaddr="$1"
+
+    [ -z "${white_ipaddr}" ] && return 1
+
+    # x.x.x.x/32
+    for ipaddr_range in ${white_ipaddr};do
+        cat <<EOF
+#------------ Network Trust: ${ipaddr_range} ---------------
+pass {
+        from: ${ipaddr_range} to: 0.0.0.0/0
+        method: none
+}
+
+EOF
+    done
+}
+
+generate_config_whitelist(){
+    local whitelist_url="$1"
+
+    if [ -n "${whitelist_url}" ];then
+        ipaddr_list=$(curl -s --insecure -A "Mozilla Server Init" ${whitelist_url})
+        generate_config_white "${ipaddr_list}"
+    fi
+}
+
+generate_config_bottom(){
+    if [ "$VERSION" == "1.3.2" ];then
+    cat <<EOF
+pass {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        protocol: tcp udp
+        method: pam
+        log: connect disconnect
+}
+block {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: connect error
+}
+
+EOF
+    else
+    cat <<EOF
+socks pass {
+    from: 0/0 to: 0/0
+    socksmethod: pam.username
+    log: connect disconnect
+}
+socks block {
+    from: 0/0 to: 0/0
+    log: connect error
+}
+
+EOF
+    fi
+}
+
+generate_config(){
+    local ipaddr_list="$1"
+    local whitelist_url="$2"
+    local whitelist_ip="$3"
+
+    mkdir -p ${BIN_DIR}
+
+    echo "# Generate by sockd.info" > ${CONFIG_PATH}
+
+    generate_config_iplist "${ipaddr_list}" ${DEFAULT_PORT} >> ${CONFIG_PATH}
+
+    generate_config_static >> ${CONFIG_PATH}
+    generate_config_white ${whitelist_ip} >> ${CONFIG_PATH}
+    generate_config_whitelist "${whitelist_url}" >> ${CONFIG_PATH}
+    generate_config_bottom  >> ${CONFIG_PATH}
+}
+
+download_file(){
+    local path="$1"
+    local filename="$2"
+    local execute="$3"
+
+    [ -z "${filename}" ] && filename="$path"
+
+    [ -n "$path" ] && \
+        wget -q --no-check-certificate ${SCRIPT_HOST}/${path} -O ${filename}
+
+    [ -f "${filename}" ] && [ -n "${execute}" ] && chmod +x ${filename}
+}
+
+##################------------Menu()---------#####################################
+echo "Current Options: $RUN_OPTS"
+for _PARAMETER in $RUN_OPTS
+do
+    case "${_PARAMETER}" in
+      --version=*)
+        VERSION="${_PARAMETER#--version=}"
+      ;;
+      --ip=*)   #split by: ip1:ip2:ip3
+        ipaddr_list=$(echo "${_PARAMETER#--ip=}" | sed 's/:/\n/g' | sed '/^$/d')
+      ;;
+      --port=*)
+        port="${_PARAMETER#--port=}"
+      ;;
+      --user=*)
+        user="${_PARAMETER#--user=}"
+      ;;
+      --passwd=*)
+        passwd="${_PARAMETER#--passwd=}"
+      ;;
+      --whitelist=*)
+        whitelist_ipaddrs=$(echo "${_PARAMETER#--whitelist=}" | sed 's/:/\n/g' | sed '/^$/d')
+      ;;
+      --whitelist-url=*)
+        whitelist="${_PARAMETER#--whitelist-url=}"
+      ;;
+      --from-package|-p)
+        echo "Sorry, install from-package is not available for CentOS."
+        # INSTALL_FROM="package"
+        exit 1
+      ;;
+      --update-whitelist|-u)
+        gen_config_only="True"
+      ;;
+      --force|-f)
+        remove_install
+      ;;
+      --uninstall)
+        remove_install
+        exit 0
+      ;;
+      --no-github)
+        echo "skip download script from github.com"
+      ;;
+      --help|-h)
+        clear
+        options=(
+                  "--ip=@Socks5 Server Ip address" \
+                  "--port=[${DEFAULT_PORT}]@port for dante socks5 server" \
+                  "--version=@Specify dante version [$VERSION]"\s
+                  "--user=@Socks5 Auth user" \
+                  "--passwd=@Socks5 Auth passwd"\
+                  "--whitelist=@Socks5 Auth IP list" \
+                  "--whitelist-url=@Socks Auth whitelist http online" \
+                  "--from-package | -p @Install package from Bin package" \
+                  "--update-whitelist | -u @update white list" \
+                  "--force-update | -f @force update sockd" \
+                  "--help,-h@print help info" )
+        printf "Usage: %s [OPTIONS]\n\nOptions:\n\n" $0
+
+        for option in "${options[@]}";do
+          printf "  %-20s%s\n" "$( echo ${option} | sed 's/@.*//g')"  "$( echo ${option} | sed 's/.*@//g')"
+        done
+        echo -e "\n"
+        exit 1
+      ;;
+      *)
+        echo "option ${_PARAMETER} is not support"
+        exit 1
+      ;;
+
+    esac
 done
 
-# 设置脚本执行权限
-chmod +x /etc/rc.d/init.d/ci_gost
+[ -n "${port}" ] && DEFAULT_PORT="${port}"
+[ -n "${ipaddr_list}" ] && DEFAULT_IPADDR="${ipaddr_list}"
+[ -n "${user}" ] && DEFAULT_USER="${user}"
+[ -n "${passwd}" ] && DEFAULT_PAWD="${passwd}"
+[ -n "${whitelist_ipaddrs}" ] && WHITE_LIST_NET="${whitelist_ipaddrs}"
+[ -n "${whitelist}" ] && WHITE_LIST="${whitelist}"
 
-# 配置防火墙
-yum install -y iptables iptables-services
-systemctl stop firewalld 2>/dev/null
-systemctl mask firewalld 2>/dev/null
-systemctl enable iptables
-systemctl start iptables
+generate_config "${DEFAULT_IPADDR}" "${WHITE_LIST}" "${WHITE_LIST_NET}"
 
-# 清空现有规则
-iptables -F
-iptables -t nat -F
-iptables -X
-iptables -t nat -X
+[ -n "$gen_config_only" ]  && echo "===========>> update config" && cat ${CONFIG_PATH} && exit 0
 
-# 设置新规则
-# user1 对应 172.19.38.111
-iptables -t mangle -A OUTPUT -m owner --uid-owner 1001 -j MARK --set-mark 1001
-iptables -t nat -A POSTROUTING -m mark --mark 1001 -j SNAT --to-source 172.19.38.111
-iptables -t nat -A PREROUTING -d 172.19.38.111 -p tcp --dport 30010 -j DNAT --to-destination 172.19.38.111:2016
-iptables -t nat -A PREROUTING -d 172.19.38.111 -p udp --dport 30010 -j DNAT --to-destination 172.19.38.111:2016
+download_file "script/sockd" "${BIN_SCRIPT}" "execute"
 
-# user2 对应 172.19.38.112
-iptables -t mangle -A OUTPUT -m owner --uid-owner 1002 -j MARK --set-mark 1002
-iptables -t nat -A POSTROUTING -m mark --mark 1002 -j SNAT --to-source 172.19.38.112
-iptables -t nat -A PREROUTING -d 172.19.38.112 -p tcp --dport 30011 -j DNAT --to-destination 172.19.38.112:2016
-iptables -t nat -A PREROUTING -d 172.19.38.112 -p udp --dport 30011 -j DNAT --to-destination 172.19.38.112:2016
+[ -n "$(detect_install)" ] && echo -e "\n[Warning] dante sockd already install." && exit 1
 
-# user3 对应 172.19.38.113
-iptables -t mangle -A OUTPUT -m owner --uid-owner 1003 -j MARK --set-mark 1003
-iptables -t nat -A POSTROUTING -m mark --mark 1003 -j SNAT --to-source 172.19.38.113
-iptables -t nat -A PREROUTING -d 172.19.38.113 -p tcp --dport 30012 -j DNAT --to-destination 172.19.38.113:2016
-iptables -t nat -A PREROUTING -d 172.19.38.113 -p udp --dport 30012 -j DNAT --to-destination 172.19.38.113:2016
+[ -n "$COLOR_PATH" ] && [ ! -s "$COLOR_PATH" ] && download_file "script/color" $COLOR_PATH && . $COLOR_PATH
 
+########################################## DEBIAN 8 ####################################################################
+yum install gcc g++ make vim pam-devel tcp_wrappers-devel unzip httpd-tools -y
 
-iptables -L
+mkdir -p /tmp/danted && rm /tmp/danted/* -rf && cd /tmp/danted
 
-# 保存防火墙规则
-service iptables save
-echo 1 > /proc/sys/net/ipv4/ip_forward
-sysctl -p >/dev/null
+id sockd > /dev/null 2>&1 || useradd sockd -s /bin/false
 
-# 设置开机启动
-echo "/etc/rc.d/init.d/ci_gost" >> /etc/rc.local
-chmod +x /etc/rc.local
+# Installing Start-Stop Daemon
+if [ -z "$(command -v start-stop-daemon)" ];then
+    download_file "source/apps-sys-utils-start-stop-daemon-IR1_9_18-2.tar.gz" "start-stop-daemon-IR1_9_18-2.tar.gz"
+    tar zxvf start-stop-daemon-IR1_9_18-2.tar.gz
+    gcc apps/sys-utils/start-stop-daemon-IR1_9_18-2/start-stop-daemon.c \
+        -o start-stop-daemon -o /sbin/start-stop-daemon
+fi
 
-# 立即启动服务
-source /etc/rc.d/init.d/ci_gost
+#--# Check libpam-pwdfile
+if [ ! -s /lib/security/pam_pwdfile.so ];then
+    download_file "source/libpam-pwdfile.zip" "libpam-pwdfile.zip"
+    if [ -f "libpam-pwdfile.zip" ];then
+        unzip libpam-pwdfile.zip
+        cd libpam-pwdfile-master && make && make install
+        cd ../
+    fi
+fi
 
-echo "配置完成！代理信息："
-cat /tmp/s5
+if [ -d /lib64/security/ ] && [ ! -f /lib64/security/pam_pwdfile.so ];then
+    [ -f /lib/security/pam_pwdfile.so ] && \
+        cp /lib/security/pam_pwdfile.so /lib64/security/ || echo "[ERROR] pam_pwdfile.so not exist!"
+fi
+
+if [ "$INSTALL_FROM" == "compile" ];then
+    yum install gcc g++ make libpam-dev libwrap0-dev -y
+
+    download_file "source/dante-${VERSION}.tar.gz" "dante-${VERSION}.tar.gz"
+
+    if [ -f "dante-${VERSION}.tar.gz" ];then
+        tar xzf dante-${VERSION}.tar.gz --strip 1
+        ./configure --with-sockd-conf=${CONFIG_PATH} --prefix=${BIN_DIR}
+        make && make install
+    fi
+else
+    download_file "package/${PACKAGE_NAME}" "${PACKAGE_NAME}"
+    [ -f "${PACKAGE_NAME}" ] && dpkg -i ${PACKAGE_NAME}
+fi
+
+cat > /etc/pam.d/sockd  <<EOF
+auth required pam_pwdfile.so pwdfile ${BIN_DIR}/sockd.passwd
+account required pam_permit.so
+EOF
+
+cat > /etc/default/sockd <<EOF
+# Default Config for sockd
+# -n :: not tcp-keep alive
+Start_Process=1
+Sockd_Opts="-n"
+EOF
+
+rm /usr/bin/sockd -f && ln -s /etc/danted/sbin/sockd /usr/bin/sockd
+${BIN_SCRIPT} adduser "${DEFAULT_USER}" "${DEFAULT_PAWD}"
+
+if [ -n "$(ls -l /sbin/init | grep systemd)" ];then
+    download_file "script/sockd.service" "/lib/systemd/system/sockd.service"
+    systemctl enable sockd
+else
+    chkconfig --add sockd
+fi
+
+service sockd restart
+clear
+
+if [ -n "$(ss -ln | grep "$DEFAULT_PORT")" ];then
+    cat <<EOF
+${CCYAN}+-----------------------------------------+$CEND
+${CGREEN} Dante Socks5 Install Done. $CEND
+${CCYAN}+-----------------------------------------+$CEND
+${CGREEN} Dante Version:       $CMAGENTA v${VERSION}$CEND
+${CGREEN} Socks5 Info:         $CMAGENTA$CEND
+EOF
+
+    for ipaddr in ${DEFAULT_IPADDR};do
+        echo "${CGREEN}                      $CMAGENTA ${ipaddr}:${DEFAULT_PORT}$CEND"
+    done
+
+    cat <<EOF
+${CGREEN} Socks5 User&Passwd:  $CMAGENTA ${DEFAULT_USER}:${DEFAULT_PAWD}$CEND
+${CCYAN}+_________________________________________+$CEND
+EOF
+    echo -e "\033[32m Dante Server Install Successfuly! \033[0m"
+else
+    echo -e "\033[1;31m Dante Server Install Failed! \033[0m"
+fi
+
+echo ""
+${BIN_SCRIPT} -h
+
+exit 0
