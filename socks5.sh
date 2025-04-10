@@ -1,34 +1,97 @@
 #!/bin/bash
-# 确保脚本以 root 权限运行
-if [ "$EUID" -ne 0 ]; then
-    echo "请使用 root 用户运行此脚本。"
+
+echo "请输入用户名: "
+read name
+
+echo "请输入密码: "
+read passwd
+
+echo "请输入端口号："
+read port
+
+# 定义接口和配置文件路径
+INTERFACE="eth1"
+MAIN_CONFIG="/etc/sysconfig/network-scripts/ifcfg-${INTERFACE}"
+RANGE_CONFIG="/etc/sysconfig/network-scripts/ifcfg-${INTERFACE}-range0"
+
+# 确保主配置文件中禁用 NetworkManager
+if ! grep -q "NM_CONTROLLED=NO" "$MAIN_CONFIG"; then
+    echo "NM_CONTROLLED=NO" >> "$MAIN_CONFIG"
+    echo "已禁用 NetworkManager 对 ${INTERFACE} 的管理"
+fi
+
+# 提取 eth1 的 IPv4 地址列表
+IP_ADDRESSES=($(ip -4 -o addr show eth1 | awk '{gsub(/\/.*/, "", $4); print $4}'))
+
+# 检查是否至少有两个 IP 地址
+if [ ${#IP_ADDRESSES[@]} -lt 2 ]; then
+    echo "错误：${INTERFACE} 需要至少两个 IPv4 地址以定义范围"
     exit 1
 fi
 
-set -e  # 任何命令出错则退出
+# 设置起始和结束 IP
+IPADDR_START=${IP_ADDRESSES[0]}
+IPADDR_END=${IP_ADDRESSES[1]}
 
-echo "创建 2G swap 文件..."
-fallocate -l 2G /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo "swap 已启用。"
+# 生成范围配置文件
+cat << EOF > "$RANGE_CONFIG"
+DEVICE="${INTERFACE}-range0"
+BOOTPROTO=static
+IPADDR_START=${IPADDR_START}
+IPADDR_END=${IPADDR_END}
+PREFIX=24
+CLONENUM_START=1
+NM_CONTROLLED=NO
+EOF
 
-echo "下载安装脚本..."
-wget --no-check-certificate -O install.sh https://raw.github.com/Lozy/danted/master/install_centos.sh
+# 重启网络服务
+systemctl restart network
 
-echo "调整安装脚本，设置 make 使用单线程..."
-sed -i 's/make -j[0-9]*/make -j1/g' install.sh
+for i in {15..1}
+do
 
-echo "获取服务器 IP 地址..."
-ip=$(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:")
+        echo  -n  ip添加成功,网络重置中,还需等待 $i 程序继续运行!!!
+        echo  -ne "\r\r"        ####echo -e 处理特殊字符  \r 光标移至行首，但不换行
+        sleep 1
+done
+
+
+sleep 1
+
+ip=`ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:"`
 jxip=$(echo $ip | sed 's/ /:/g')
-echo "检测到 IP 地址: $jxip"
+echo $jxip
 
-echo "等待 6 秒..."
 sleep 6
 
-echo "执行安装脚本..."
-bash install.sh --ip="$jxip" --port=2016 --user=aa1111 --passwd=aa1111
+bash install.sh --ip="$jxip" --port=$port --user=$name --passwd=$passwd
 
-echo "脚本执行完毕。"
+echo -n Socks5代理已经安装完成，等待6秒设置策略路由
+sleep 6
+
+#SUBNET_GATEWAY=$(ip route show default | awk '/default/ {print $3; exit}')
+SUBNET_GATEWAY="172.19.63.253"
+#SUBNET_NETWORK=$(ip route | awk '/src/ {split($1, net, "/"); print net[1] "/" net[2]; exit}')
+SUBNET_NETWORK="172.19.0.0/18"
+
+# Get the list of network interfaces
+NIC_LIST=($(ip link show | awk -F': ' '!/^[0-9]: lo/{print $2}'))
+s=20
+# Loop through each network interface
+for net_name in "${NIC_LIST[@]}"; do
+    # Check if the network interface is an extension NIC
+    if [[ "$net_name" != *"lo"* ]]; then
+        # Get the IP address of the network interface
+        #ip_address=$(ip addr show "$net_name" | awk '/inet /{print $2}')
+        ip_address=$(ip addr show "$net_name" | awk '/inet / && !/127.0.0.1/{gsub(/\/.*/,"",$2); print $2}')
+        # Generate a unique route table number based on the network interface index
+        route_table=$(( ${#NIC_LIST[@]} - ${!net_name} + 10 ))
+
+        s=$((s+1))
+        ip route add default via 172.19.63.253 dev $net_name table $s
+        ip route add 172.19.0.0/18 dev $net_name table $s
+        ip rule add from $ip_address table $s
+    fi
+done
+
+echo -n 策略路由已经添加完成
