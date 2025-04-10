@@ -1,14 +1,4 @@
 #!/bin/bash
-
-echo "请输入用户名: "
-read name
-
-echo "请输入密码: "
-read passwd
-
-echo "请输入端口号："
-read port
-
 # 确保脚本以 root 权限运行
 if [ "$EUID" -ne 0 ]; then
     echo "请使用 root 用户运行此脚本。"
@@ -39,6 +29,6 @@ echo "等待 6 秒..."
 sleep 6
 
 echo "执行安装脚本..."
-bash install.sh --ip="$jxip" --port=$port --user=$name --passwd=$passwd
+bash install.sh --ip="$jxip" --port=2016 --user=aa1111 --passwd=aa1111
 
 echo "脚本执行完毕。"
