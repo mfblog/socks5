@@ -76,22 +76,27 @@ SUBNET_NETWORK="172.19.0.0/18"
 
 # Get the list of network interfaces
 NIC_LIST=(eth0 eth1)
-s=20
+BASE_TABLE=20
 
 for net_name in "${NIC_LIST[@]}"; do
     if [[ "$net_name" != *"lo"* ]]; then
         readarray -t ip_array < <(ip addr show "$net_name" | awk '/inet / && !/127.0.0.1/ {gsub(/\/.*/,"",$2); print $2}')
         for ((i=0; i<${#ip_array[@]}; i++)); do
-
-            s=$((s+1))
-            
             ip_list="${ip_array[$i]}"
-
-            ip route add default via 172.19.63.253 dev $net_name table $s
-            ip route add 172.19.0.0/18 dev $net_name table $s
-            ip rule add from $ip_list table $s
-
-            echo "$ip_list table $s"
+            # 使用IP地址的最后一位作为路由表编号的一部分
+            last_octet=$(echo $ip_list | awk -F. '{print $4}')
+            table_num=$((BASE_TABLE + last_octet))
+            
+            # 清除可能存在的旧规则
+            ip rule del from $ip_list table $table_num 2>/dev/null
+            ip route flush table $table_num 2>/dev/null
+            
+            # 添加新的路由规则
+            ip route add default via 172.19.63.253 dev $net_name table $table_num
+            ip route add 172.19.0.0/18 dev $net_name table $table_num
+            ip rule add from $ip_list table $table_num
+            
+            echo "IP: $ip_list 使用路由表: $table_num"
         done
     fi
 done
