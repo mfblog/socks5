@@ -69,10 +69,10 @@ bash install.sh --ip="$jxip" --port=$port --user=$name --passwd=$passwd
 echo -n "Socks5代理已经安装完成，等待6秒设置策略路由"
 sleep 6
 
-#SUBNET_GATEWAY=$(ip route show default | awk '/default/ {print $3; exit}')
-SUBNET_GATEWAY="172.19.63.253"
-#SUBNET_NETWORK=$(ip route | awk '/src/ {split($1, net, "/"); print net[1] "/" net[2]; exit}')
-SUBNET_NETWORK="172.19.0.0/18"
+SUBNET_GATEWAY=$(ip route show default | awk '/default/ {print $3; exit}')
+#SUBNET_GATEWAY="172.19.63.253"
+SUBNET_NETWORK=$(ip route | awk '/src/ {split($1, net, "/"); print net[1] "/" net[2]; exit}')
+#SUBNET_NETWORK="172.19.0.0/18"
 
 # Get the list of network interfaces
 NIC_LIST=(eth0 eth1)
