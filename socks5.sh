@@ -92,8 +92,8 @@ for net_name in "${NIC_LIST[@]}"; do
             ip route flush table $table_num 2>/dev/null
             
             # 添加新的路由规则
-            ip route add default via 172.19.63.253 dev $net_name table $table_num
-            ip route add 172.19.0.0/18 dev $net_name table $table_num
+            ip route add default via $SUBNET_GATEWAY dev $net_name table $table_num
+            ip route add $SUBNET_NETWORK dev $net_name table $table_num
             ip rule add from $ip_list table $table_num
             
             echo "IP: $ip_list 使用路由表: $table_num"
