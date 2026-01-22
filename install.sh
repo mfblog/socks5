@@ -346,12 +346,24 @@ ${BIN_SCRIPT} adduser "${DEFAULT_USER}" "${DEFAULT_PAWD}"
 
 if [ -n "$(ls -l /sbin/init | grep systemd)" ];then
     download_file "script/sockd.service" "/lib/systemd/system/sockd.service"
-    systemctl enable sockd
+    if [ -f /lib/systemd/system/sockd.service ]; then
+        # 避免旧 pid 阻断启动，并确保网络就绪后再拉起
+        sed -i '/^ConditionPathExists=!\/var\/run\/sockd.pid/d' /lib/systemd/system/sockd.service
+        if ! grep -q '^After=network-online.target' /lib/systemd/system/sockd.service; then
+            sed -i '/^\[Unit\]/a Wants=network-online.target' /lib/systemd/system/sockd.service
+            sed -i '/^\[Unit\]/a After=network-online.target' /lib/systemd/system/sockd.service
+        fi
+        if ! grep -q '^ExecStartPre=/usr/bin/rm -f /var/run/sockd.pid' /lib/systemd/system/sockd.service; then
+            sed -i '/^\[Service\]/a ExecStartPre=/usr/bin/rm -f /var/run/sockd.pid' /lib/systemd/system/sockd.service
+        fi
+    fi
+    systemctl daemon-reload
+    systemctl enable --now sockd
 else
     chkconfig --add sockd
+    chkconfig sockd on
+    service sockd restart
 fi
-
-service sockd restart
 clear
 
 if [ -n "$(ss -ln | grep "$DEFAULT_PORT")" ];then
