@@ -9,9 +9,17 @@ PROXY_USER="user1"
 PROXY_PASS="user1"
 CONFIG_FILE="/etc/proxychains.conf"
 
-# ===== 函数 =====
+# 测试参数
+TEST_URL="http://ip.sb"
+CONNECT_TIMEOUT=8
+MAX_TIME=15
+
 log() {
     echo "[INFO] $1"
+}
+
+warn() {
+    echo "[WARN] $1"
 }
 
 err() {
@@ -68,7 +76,7 @@ elif ! grep -q '^[[:space:]]*proxy_dns' "$CONFIG_FILE"; then
     sed -i '/^dynamic_chain/a proxy_dns' "$CONFIG_FILE"
 fi
 
-# ===== 清理旧代理配置，只保留 [ProxyList] 标记后的注释，删除实际代理项 =====
+# ===== 清理旧代理条目 =====
 log "清理旧代理条目..."
 awk '
 BEGIN { in_proxylist=0 }
@@ -94,18 +102,50 @@ fi
 
 # ===== 写入 socks5 代理 =====
 log "写入 socks5 代理..."
-
 if [ -n "$PROXY_USER" ] && [ -n "$PROXY_PASS" ]; then
     echo "socks5  $PROXY_HOST $PROXY_PORT $PROXY_USER $PROXY_PASS" >> "$CONFIG_FILE"
 else
     echo "socks5  $PROXY_HOST $PROXY_PORT" >> "$CONFIG_FILE"
 fi
 
-# ===== 输出结果 =====
 log "proxychains4 安装并配置完成"
 echo
 echo "当前代理配置："
 tail -n 20 "$CONFIG_FILE"
 echo
-echo "测试命令："
-echo "proxychains4 curl ip.sb"
+
+# ===== 自动测试 =====
+log "开始自动测试代理连通性..."
+
+TEST_OUTPUT=$(
+    proxychains4 curl -sS \
+    --connect-timeout "$CONNECT_TIMEOUT" \
+    --max-time "$MAX_TIME" \
+    "$TEST_URL" 2>&1
+)
+TEST_STATUS=$?
+
+if [ $TEST_STATUS -eq 0 ] && [ -n "$TEST_OUTPUT" ]; then
+    log "代理测试成功，出口 IP: $TEST_OUTPUT"
+    exit 0
+fi
+
+warn "首次测试失败，尝试关闭 proxy_dns 后再测一次..."
+
+cp -a "$CONFIG_FILE" "${CONFIG_FILE}.testbak.$(date +%Y%m%d%H%M%S)"
+sed -i 's/^[[:space:]]*proxy_dns/# proxy_dns/g' "$CONFIG_FILE"
+
+TEST_OUTPUT=$(
+    proxychains4 curl -sS \
+    --connect-timeout "$CONNECT_TIMEOUT" \
+    --max-time "$MAX_TIME" \
+    "$TEST_URL" 2>&1
+)
+TEST_STATUS=$?
+
+if [ $TEST_STATUS -eq 0 ] && [ -n "$TEST_OUTPUT" ]; then
+    log "代理测试成功（关闭 proxy_dns 后），出口 IP: $TEST_OUTPUT"
+    exit 0
+fi
+
+err "代理测试失败。请检查代理地址、端口、账号密码是否正确，或更换代理节点。"
