@@ -88,8 +88,6 @@ DOMAIN-SUFFIX,cib.com.cn
 DOMAIN-SUFFIX,citicbank.cn
 DOMAIN-SUFFIX,citicbank.com
 DOMAIN-SUFFIX,cjjd14.com
-DOMAIN-SUFFIX,cloudflare.com
-DOMAIN-SUFFIX,cloudflareinsights.com
 DOMAIN-SUFFIX,cloudfront.net
 DOMAIN-SUFFIX,cmbc.cn
 DOMAIN-SUFFIX,cmbc.com.cn
@@ -155,16 +153,9 @@ DOMAIN-SUFFIX,getui.net
 DOMAIN-SUFFIX,gifshow.com
 DOMAIN-SUFFIX,gitee.com
 DOMAIN-SUFFIX,giteeusercontent.com
-DOMAIN-SUFFIX,github.com
-DOMAIN-SUFFIX,githubassets.com
-DOMAIN-SUFFIX,githubusercontent.com
 DOMAIN-SUFFIX,globalsign.com
 DOMAIN-SUFFIX,gmcc.net
 DOMAIN-SUFFIX,goofish.com
-DOMAIN-SUFFIX,google-analytics.com
-DOMAIN-SUFFIX,googleapis.com
-DOMAIN-SUFFIX,googletagmanager.com
-DOMAIN-SUFFIX,gstatic.com
 DOMAIN-SUFFIX,gsxt.gov.cn
 DOMAIN-SUFFIX,gtimg.cn
 DOMAIN-SUFFIX,gtimg.com
