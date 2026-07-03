@@ -1,118 +1,109 @@
-{
-  "version": 3,
-  "rules": [
-    {
-      "domain_suffix": [
-        "20021002.xyz",
-        "22112211.xyz",
-        "akamaihd.net",
-        "akstat.io",
-        "alicdn.com",
-        "amazonaws.com",
-        "amazonaws.com.cn",
-        "ankr.com",
-        "anysearch.com",
-        "app-analytics-services.com",
-        "app-measurement.com",
-        "apple.com",
-        "appsflyersdk.com",
-        "autonavi.com",
-        "baidu.com",
-        "bing.com",
-        "bootcdn.net",
-        "ccya.top",
-        "citi.com",
-        "clarity.ms",
-        "cloudflareinsights.com",
-        "crashlytics.com",
-        "ctexcel.com",
-        "czyl.cf",
-        "dciwx.com",
-        "digicert.com",
-        "dns.google",
-        "doubleclick.net",
-        "doubleverify.com",
-        "eu.org",
-        "facebook.com",
-        "facebook.net",
-        "garmin.cn",
-        "garmin.com",
-        "getgems.io",
-        "ggpht.com",
-        "github.com",
-        "go-mpulse.net",
-        "godaddy.com",
-        "google-analytics.com",
-        "google.com",
-        "googleapis.com",
-        "googlesyndication.com",
-        "googletagmanager.com",
-        "googleusercontent.com",
-        "googlevideo.com",
-        "gstatic.com",
-        "gvt1.com",
-        "hvoy.ai",
-        "i71.uk",
-        "ibyteimg.com",
-        "icloud.com",
-        "langge.cf",
-        "langge.tk",
-        "maiesim.top",
-        "mixpanel.com",
-        "myqcloud.com",
-        "nodeseek.com",
-        "on.aws",
-        "openweathermap.org",
-        "oracle.com",
-        "oraclecloud.com",
-        "sentry.io",
-        "snapkit.com",
-        "split.io",
-        "steamcommunity.com",
-        "steampowered.com",
-        "steamstatic.com",
-        "ston.fi",
-        "t.co",
-        "t.me",
-        "termius.com",
-        "tiktok-minis.com",
-        "tiktokcdn.com",
-        "tiktokglobalshopv.com",
-        "tiktokv.com",
-        "tonapi.io",
-        "twitter.com",
-        "usercentrics.eu",
-        "usmartsg.com",
-        "verizon.com",
-        "walletbot.me",
-        "wnluo.com",
-        "youtube.com",
-        "ytimg.com",
-        "yxzq.com"
-      ],
-      "ip_cidr": [
-        "103.40.13.126",
-        "119.29.29.89",
-        "119.29.29.91",
-        "142.251.10.0/24",
-        "143.20.196.148",
-        "149.154.166.120",
-        "149.154.167.0/24",
-        "149.154.171.5",
-        "149.154.175.0/24",
-        "192.168.100.3",
-        "194.221.250.50",
-        "198.18.0.0/24",
-        "198.18.57.0/24",
-        "219.154.201.122",
-        "34.102.215.99",
-        "47.242.186.255",
-        "47.242.214.131",
-        "47.76.167.57",
-        "91.108.56.176",
-        "91.108.56.200",
-        "98.159.108.71"
-      ]
-    }
-  ]
-}
+# NAME: Proxy
+# TOTAL: 107
+DOMAIN-SUFFIX,20021002.xyz
+DOMAIN-SUFFIX,22112211.xyz
+DOMAIN-SUFFIX,akamaihd.net
+DOMAIN-SUFFIX,akstat.io
+DOMAIN-SUFFIX,alicdn.com
+DOMAIN-SUFFIX,amazonaws.com
+DOMAIN-SUFFIX,amazonaws.com.cn
+DOMAIN-SUFFIX,ankr.com
+DOMAIN-SUFFIX,anysearch.com
+DOMAIN-SUFFIX,app-analytics-services.com
+DOMAIN-SUFFIX,app-measurement.com
+DOMAIN-SUFFIX,apple.com
+DOMAIN-SUFFIX,appsflyersdk.com
+DOMAIN-SUFFIX,autonavi.com
+DOMAIN-SUFFIX,baidu.com
+DOMAIN-SUFFIX,bing.com
+DOMAIN-SUFFIX,bootcdn.net
+DOMAIN-SUFFIX,ccya.top
+DOMAIN-SUFFIX,citi.com
+DOMAIN-SUFFIX,clarity.ms
+DOMAIN-SUFFIX,cloudflareinsights.com
+DOMAIN-SUFFIX,crashlytics.com
+DOMAIN-SUFFIX,ctexcel.com
+DOMAIN-SUFFIX,czyl.cf
+DOMAIN-SUFFIX,dciwx.com
+DOMAIN-SUFFIX,digicert.com
+DOMAIN-SUFFIX,dns.google
+DOMAIN-SUFFIX,doubleclick.net
+DOMAIN-SUFFIX,doubleverify.com
+DOMAIN-SUFFIX,eu.org
+DOMAIN-SUFFIX,facebook.com
+DOMAIN-SUFFIX,facebook.net
+DOMAIN-SUFFIX,garmin.cn
+DOMAIN-SUFFIX,garmin.com
+DOMAIN-SUFFIX,getgems.io
+DOMAIN-SUFFIX,ggpht.com
+DOMAIN-SUFFIX,github.com
+DOMAIN-SUFFIX,go-mpulse.net
+DOMAIN-SUFFIX,godaddy.com
+DOMAIN-SUFFIX,google-analytics.com
+DOMAIN-SUFFIX,google.com
+DOMAIN-SUFFIX,googleapis.com
+DOMAIN-SUFFIX,googlesyndication.com
+DOMAIN-SUFFIX,googletagmanager.com
+DOMAIN-SUFFIX,googleusercontent.com
+DOMAIN-SUFFIX,googlevideo.com
+DOMAIN-SUFFIX,gstatic.com
+DOMAIN-SUFFIX,gvt1.com
+DOMAIN-SUFFIX,hvoy.ai
+DOMAIN-SUFFIX,i71.uk
+DOMAIN-SUFFIX,ibyteimg.com
+DOMAIN-SUFFIX,icloud.com
+DOMAIN-SUFFIX,langge.cf
+DOMAIN-SUFFIX,langge.tk
+DOMAIN-SUFFIX,maiesim.top
+DOMAIN-SUFFIX,mixpanel.com
+DOMAIN-SUFFIX,myqcloud.com
+DOMAIN-SUFFIX,nodeseek.com
+DOMAIN-SUFFIX,on.aws
+DOMAIN-SUFFIX,openweathermap.org
+DOMAIN-SUFFIX,oracle.com
+DOMAIN-SUFFIX,oraclecloud.com
+DOMAIN-SUFFIX,sentry.io
+DOMAIN-SUFFIX,snapkit.com
+DOMAIN-SUFFIX,split.io
+DOMAIN-SUFFIX,steamcommunity.com
+DOMAIN-SUFFIX,steampowered.com
+DOMAIN-SUFFIX,steamstatic.com
+DOMAIN-SUFFIX,ston.fi
+DOMAIN-SUFFIX,t.co
+DOMAIN-SUFFIX,t.me
+DOMAIN-SUFFIX,termius.com
+DOMAIN-SUFFIX,tiktok-minis.com
+DOMAIN-SUFFIX,tiktokcdn.com
+DOMAIN-SUFFIX,tiktokglobalshopv.com
+DOMAIN-SUFFIX,tiktokv.com
+DOMAIN-SUFFIX,tonapi.io
+DOMAIN-SUFFIX,twitter.com
+DOMAIN-SUFFIX,usercentrics.eu
+DOMAIN-SUFFIX,usmartsg.com
+DOMAIN-SUFFIX,verizon.com
+DOMAIN-SUFFIX,walletbot.me
+DOMAIN-SUFFIX,wnluo.com
+DOMAIN-SUFFIX,youtube.com
+DOMAIN-SUFFIX,ytimg.com
+DOMAIN-SUFFIX,yxzq.com
+IP-CIDR,103.40.13.126,no-resolve
+IP-CIDR,119.29.29.89,no-resolve
+IP-CIDR,119.29.29.91,no-resolve
+IP-CIDR,142.251.10.0/24,no-resolve
+IP-CIDR,143.20.196.148,no-resolve
+IP-CIDR,149.154.166.120,no-resolve
+IP-CIDR,149.154.167.0/24,no-resolve
+IP-CIDR,149.154.171.5,no-resolve
+IP-CIDR,149.154.175.0/24,no-resolve
+IP-CIDR,192.168.100.3,no-resolve
+IP-CIDR,194.221.250.50,no-resolve
+IP-CIDR,198.18.0.0/24,no-resolve
+IP-CIDR,198.18.57.0/24,no-resolve
+IP-CIDR,219.154.201.122,no-resolve
+IP-CIDR,34.102.215.99,no-resolve
+IP-CIDR,47.242.186.255,no-resolve
+IP-CIDR,47.242.214.131,no-resolve
+IP-CIDR,47.76.167.57,no-resolve
+IP-CIDR,91.108.56.176,no-resolve
+IP-CIDR,91.108.56.200,no-resolve
+IP-CIDR,98.159.108.71,no-resolve
