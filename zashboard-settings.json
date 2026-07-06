@@ -56,7 +56,7 @@
   "config/proxy-sort-type": "defaultsort",
   "config/group-proxies-by-provider": "false",
   "config/proxy-chain-direction": "normal",
-  "config/auto-import-settings": "false",
+  "config/auto-import-settings": "true",
   "config/settings-menu-order": "[\"generalSettings\",\"overviewSettings\",\"backendSettings\",\"proxySettings\",\"connectionSettings\"]",
   "config/auto-theme": "false",
   "config/proxy-provider-search-mode": "global",
