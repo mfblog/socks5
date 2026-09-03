@@ -1,0 +1,204 @@
+mixed-port: 7890
+redir-port: 7892
+tproxy-port: 7893
+authentication: [""]
+allow-lan: true
+mode: Rule
+log-level: info
+ipv6: true
+external-controller: :9999
+external-ui: ui
+external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+secret: 
+# 手机端需要 TUN/VPN 才能接管其他 App 的流量；sing-box 中对应 tun-in + auto_route
+tun:
+  enable: true
+  stack: system
+  auto-route: true
+  auto-detect-interface: true
+  strict-route: true
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+# en0 是桌面端网卡名，手机端不要固定接口；让内核自动识别当前网络接口
+experimental: {ignore-resolve-fail: true}
+
+find-process-mode: "off"
+routing-mark: 7894
+unified-delay: true
+dns:
+  enable: true
+  listen: :1053
+  use-hosts: true
+  ipv6: true
+  default-nameserver: [ 223.5.5.5, 2400:3200::1 ]
+  direct-nameserver: [ 223.5.5.5, 1.2.4.8 ]
+  enhanced-mode: fake-ip
+  # 与 sing-box 的 198.18.x.x fake-IP 思路一致；28.0.0.0/8 会占用真实公网地址段，不建议使用
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-range6: fc00::/18
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - '+.lan'
+    - '+.local'
+    - 'localhost'
+  nameserver: [ 223.5.5.5, 1.2.4.8 ]
+use-system-hosts: true
+hosts:
+  'time.android.com': 203.107.6.88
+  'time.facebook.com': 203.107.6.88
+  'services.googleapis.cn': services.googleapis.com
+  'localhost': 127.0.0.1
+  'Wyse3040': 127.0.1.1
+proxies:
+  - name: 🇯🇵 沪日IX
+    type: ssh
+    server: "211.136.162.184"
+    port: 12700
+    transport: TCP
+    udp: true
+    username: root
+    private-key: |
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+      QyNTUxOQAAACCE4JUpKd4xuoLVmBv9C43D/WWomT4PXwdQqMXgGGJi0QAAAIgMAEhdDABI
+      XQAAAAtzc2gtZWQyNTUxOQAAACCE4JUpKd4xuoLVmBv9C43D/WWomT4PXwdQqMXgGGJi0Q
+      AAAECwYVMuK3SXqAp3Px89G6VrBOETuh/xi8AJojRU4mf1kYTglSkp3jG6gtWYG/0LjcP9
+      ZaiZPg9fB1CoxeAYYmLRAAAAAk4xAQID
+      -----END OPENSSH PRIVATE KEY-----
+  - name: 🇭🇰 香港节点
+    type: vless
+    server: 47.76.167.57
+    port: 443
+    uuid: a2143c85-aa45-4b99-b41a-dfd76e7324bc
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: juscar.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: 6N9j3PnWdvAYK44s4I9Aw5IGmr5MxsHBVy9dRpn-GUQ
+      short-id: 28a224af36
+  - name: 🇺🇲 美国节点
+    type: vless
+    server: dm.990438.xyz
+    port: 17013
+    uuid: 68548d88-fdba-4308-9ceb-2338e3cd4532
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: yahoo.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: oYReqk59YisfC_tK_c1QBDk9ougb5TuotZdypHxo_1k
+      short-id: 736c1a
+      spider-x: /
+  - {name: 🇬🇧 英国节点, server: 18.135.104.92, port: 8388, type: ss, cipher: chacha20-ietf-poly1305, password: pinduoduo, udp: true}
+  - {name: 🇸🇬 CM Link, server: 127.0.0.1, port: 10800, type: socks5, username: meifly, password: "tuchan..", udp: true}
+  # 对应 sing-box 的 backhome-hy2 / backhome-ss / backhome-trojan
+  - name: 🏠 回家-Hysteria2
+    type: hysteria2
+    server: 103.40.13.126
+    port: 64567
+    password: "mf0906571X@@"
+    sni: bing.com
+    skip-cert-verify: true
+    alpn:
+      - h3
+    udp: true
+  - name: 🏠 回家-SS2022
+    type: ss
+    server: 103.40.13.126
+    port: 64568
+    cipher: 2022-blake3-aes-256-gcm
+    password: "M2FkZDhmZjAyNGNlOTkyZWFiNWE0MWE3ZTRmNTUyYWI="
+    udp: true
+  - name: 🏠 回家-Trojan
+    type: trojan
+    server: 103.40.13.126
+    port: 64569
+    password: "mf0906571X@@"
+    sni: bing.com
+    skip-cert-verify: true
+    udp: true
+  - {name: 🎯 直连, type: direct, udp: true}
+
+# 全局配置 
+proxy-groups:
+  - {name: 🚀 默认代理, type: select, proxies: [🇯🇵 沪日IX, 🇺🇲 美国节点, 🇭🇰 香港节点, 🇸🇬 CM Link, 🎯 直连]}
+  - {name: 🏠 回家网络, type: select, proxies: [🏠 回家-Hysteria2, 🏠 回家-SS2022, 🏠 回家-Trojan, 🎯 直连]}
+  - {name: 🤖 Ai, type: select, proxies: [🚀 默认代理, 🇯🇵 沪日IX, 🇸🇬 CM Link, 🇺🇲 美国节点]}
+  - {name: ✈️ Telegram, type: select, proxies: [🚀 默认代理, 🇯🇵 沪日IX, 🇺🇲 美国节点, 🇭🇰 香港节点, 🇸🇬 CM Link]}
+  - {name: 📺 Youtube, type: select, proxies: [🚀 默认代理, 🇯🇵 沪日IX, 🇺🇲 美国节点, 🇭🇰 香港节点, 🇸🇬 CM Link]}
+  - {name: ✈️ WIFI-通话-英国, type: select, proxies: [🇬🇧 英国节点]}
+  - {name: 🐟 漏网之鱼, type: select, proxies: [🚀 默认代理, 🇯🇵 沪日IX, 🇭🇰 香港节点, 🇺🇲 美国节点, 🎯 直连]} 
+
+# 规则匹配
+# 此规则部分没有做防泄露处理，因为弊严重大于利！
+rules:
+# 代理服务器地址必须直连，避免 TUN/规则回环
+ - IP-CIDR,47.76.167.57/32,DIRECT,no-resolve
+ - IP-CIDR,103.40.13.126/32,DIRECT,no-resolve
+# 与 sing-box 的 ip_cidr -> BackHome 对应：先于 private_domain/cn_ip 等直连规则
+ - IP-CIDR,10.0.0.0/8,🏠 回家网络
+ - IP-CIDR,192.168.0.0/16,🏠 回家网络
+# 地区检测
+# 英国 SIM 卡 Wi-Fi Calling 配置规则
+# 沃达丰
+ - DOMAIN-SUFFIX,entsrv-uk.vodafone.com,✈️ WIFI-通话-英国
+ - DOMAIN-SUFFIX,epdg.epc.mnc015.mcc234.pub.3gppnetwork.org,✈️ WIFI-通话-英国
+ - DOMAIN-SUFFIX,epdg.epc.geo.mnc015.mcc234.pub.3gppnetwork.org,✈️ WIFI-通话-英国
+ - DOMAIN-SUFFIX,vuk-gto.prod.ondemandconnectivity.com,✈️ WIFI-通话-英国
+ - IP-CIDR,88.82.0.0/19,✈️ WIFI-通话-英国,no-resolve
+  # CMLink UK EE
+ - IP-CIDR,46.68.0.0/17,✈️ WIFI-通话-英国,no-resolve
+  # CTEXCEL
+ - DOMAIN-SUFFIX,epdg.epc.mnc033.mcc234.pub.3gppnetwork.org,✈️ WIFI-通话-英国
+ - IP-CIDR,31.94.0.0/16,✈️ WIFI-通话-英国,no-resolve
+  # Giffgaff
+ - DOMAIN-SUFFIX,giffgaff.com,✈️ WIFI-通话-英国
+ - DOMAIN-SUFFIX,epdg.epc.mnc010.mcc234.pub.3gppnetwork.org,✈️ WIFI-通话-英国
+ - IP-CIDR,87.194.0.0/16,✈️ WIFI-通话-英国,no-resolve
+  # 3UK
+ - DOMAIN-SUFFIX,epdg.epc.mnc020.mcc234.pub.3gppnetwork.org,✈️ WIFI-通话-英国
+ - IP-CIDR,185.153.236.0/22,✈️ WIFI-通话-英国,no-resolve
+ - IP-CIDR,185.153.237.0/24,✈️ WIFI-通话-英国,no-resolve
+  # VOXI
+ - IP-CIDR,148.252.160.0/19,✈️ WIFI-通话-英国,no-resolve
+ - DOMAIN-SUFFIX,hcaptcha.com,🚀 默认代理
+ - DOMAIN-SUFFIX,push.apple.com,🚀 默认代理
+ - DOMAIN-SUFFIX,cmlink.com,✈️ Telegram
+ - DOMAIN-SUFFIX,clubsim.com.hk,✈️ Telegram
+ - DOMAIN-SUFFIX,hkcsl.com,✈️ Telegram
+ - RULE-SET,claude,🤖 Ai
+ - RULE-SET,openai,🤖 Ai
+ - RULE-SET,telegram,✈️ Telegram
+ - RULE-SET,youtube,📺 Youtube
+ - RULE-SET,cn_domain,🎯 直连
+ - RULE-SET,cn_ip,🎯 直连
+ - RULE-SET,apple,🎯 直连
+ - RULE-SET,private_domain,🎯 直连
+ - RULE-SET,Driects,🎯 直连
+ - RULE-SET,Proxys,🚀 默认代理
+ - RULE-SET,proxylite,🚀 默认代理
+ - RULE-SET,gfw_domain,🚀 默认代理
+ - RULE-SET,geolocation-!cn,🚀 默认代理
+ - MATCH,🐟 漏网之鱼
+
+# 规则集
+rule-providers:
+  private_domain: {type: http, interval: 86400, behavior: domain, format: mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs"}
+  claude: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Claude.list"}
+  openai: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/OpenAi.list"}
+  telegram: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Telegram.list"}
+  youtube: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/YouTube.list"}
+  apple: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Apple.list"}
+  Driects: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/mfblog/socks5/main/direct-rules.list"}
+  Proxys: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/mfblog/socks5/main/proxy-rules.list"}
+  proxylite: {type: http, interval: 86400, behavior: classical, format: text, url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyLite.list"}
+  gfw_domain: {type: http, interval: 86400, behavior: domain, format: mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/gfw.mrs"}
+  geolocation-!cn: {type: http, interval: 86400, behavior: domain, format: mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs"}
+  cn_domain: {type: http, interval: 86400, behavior: domain, format: mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs"}
+  cn_ip: {type: http, interval: 86400, behavior: ipcidr, format: mrs, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs"}
